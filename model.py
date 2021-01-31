@@ -120,13 +120,9 @@ class CifarNet(nn.Module):  # Example net for CIFAR10
         out = torch.sum(x, dim=2) / steps  # [N, neurons, steps]
         return out
 
-
-
-
 # ------------------- #
 #   ResNet Example    #
 # ------------------- #
-
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
@@ -144,8 +140,7 @@ class BasicBlock(nn.Module):
     '''
     expansion = 1
 
-    def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
-                 base_width=64, dilation=1, norm_layer=None):
+    def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1, base_width=64, dilation=1, norm_layer=None):
         super(BasicBlock, self).__init__()
         if norm_layer is None:
             norm_layer = tdBatchNorm
@@ -200,15 +195,12 @@ class ResNet(nn.Module):
                              "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=3, stride=1, padding=1,
-                               bias=False)
+        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.conv1_s = tdLayer(self.conv1, self.bn1)
         self.layer1 = self._make_layer(block, 128, layers[0])
-        self.layer2 = self._make_layer(block, 256, layers[1], stride=2,
-                                       dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 512, layers[2], stride=2,
-                                       dilate=replace_stride_with_dilation[1])
+        self.layer2 = self._make_layer(block, 256, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
+        self.layer3 = self._make_layer(block, 512, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
         self.avgpool = tdLayer(nn.AdaptiveAvgPool2d((1, 1)))
         
         self.fc1 = nn.Linear(512 * block.expansion, 256)
