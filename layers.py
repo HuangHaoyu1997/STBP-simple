@@ -3,18 +3,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-steps = 2
+steps = 2   # 时间窗长度
 dt = 5
 simwin = dt * steps
 a = 0.25
-aa = 0.5    # 梯度近似项 
+lens = 0.5  # 梯度近似项 
 Vth = 0.2   # 阈值电压 V_threshold
-tau = 0.25  # 漏电常熟 tau
+tau = 0.25  # 漏电常数 tau
 
 
 class SpikeAct(torch.autograd.Function):
-    """ 定义脉冲激活函数，并根据论文公式进行梯度的近似。
-        Implementation of the spiking activation function with an approximation of gradient.
+    """
+    定义脉冲激活函数，并根据论文公式进行梯度的近似。
+    Implementation of the spiking activation function with an approximation of gradient.
     """
     @staticmethod
     def forward(ctx, input):
@@ -28,22 +29,26 @@ class SpikeAct(torch.autograd.Function):
         input, = ctx.saved_tensors 
         grad_input = grad_output.clone()
         # hu is an approximate func of df/du
-        hu = abs(input) < aa
-        hu = hu.float() / (2 * aa)
+        hu = abs(input) < lens
+        hu = hu.float() / (2 * lens)
         return grad_input * hu
 
 spikeAct = SpikeAct.apply
 
-
 def state_update(u_t_n1, o_t_n1, W_mul_o_t1_n):
+    # LIF动力学方程的离散形式
     u_t1_n1 = tau * u_t_n1 * (1 - o_t_n1) + W_mul_o_t1_n
-    o_t1_n1 = spikeAct(u_t1_n1 - Vth)
+    o_t1_n1 = spikeAct(u_t1_n1 - Vth) # 脉冲发放
     return u_t1_n1, o_t1_n1
 
 
 class tdLayer(nn.Module):
-    """将普通的层转换到时间域上。输入张量需要额外带有时间维，此处时间维在数据的最后一维上。前传时，对该时间维中的每一个时间步的数据都执行一次普通层的前传。
-        Converts a common layer to the time domain. The input tensor needs to have an additional time dimension, which in this case is on the last dimension of the data. When forwarding, a normal layer forward is performed for each time step of the data in that time dimension.
+    """
+    将普通的层转换到时间域上。输入张量需要额外带有时间维，此处时间维在数据的最后一维上。
+    前传时，对该时间维中的每一个时间步的数据都执行一次普通层的前传。
+    Converts a common layer to the time domain. 
+    The input tensor needs to have an additional time dimension, which in this case is on the last dimension of the data. 
+    When forwarding, a normal layer forward is performed for each time step of the data in that time dimension.
 
     Args:
         layer (nn.Module): 需要转换的层。
@@ -65,10 +70,12 @@ class tdLayer(nn.Module):
             x_ = self.bn(x_)
         return x_
 
-        
 class LIFSpike(nn.Module):
-    """对带有时间维度的张量进行一次LIF神经元的发放模拟，可以视为一个激活函数，用法类似ReLU。
-        Generates spikes based on LIF module. It can be considered as an activation function and is used similar to ReLU. The input tensor needs to have an additional time dimension, which in this case is on the last dimension of the data.
+    """
+    对带有时间维度的张量进行一次LIF神经元的发放模拟，可以视为一个激活函数，用法类似ReLU。
+    Generates spikes based on LIF module. 
+    It can be considered as an activation function and is used similar to ReLU. 
+    The input tensor needs to have an additional time dimension, which in this case is on the last dimension of the data.
     """
     def __init__(self):
         super(LIFSpike, self).__init__()
@@ -77,13 +84,15 @@ class LIFSpike(nn.Module):
         u   = torch.zeros(x.shape[:-1] , device=x.device)
         out = torch.zeros(x.shape, device=x.device)
         for step in range(steps):
-            u, out[..., step] = state_update(u, out[..., max(step-1, 0)], x[..., step])
+            u, out[..., step] = state_update(u_t_n1=u, o_t_n1=out[..., max(step-1, 0)], W_mul_o_t1_n=x[..., step])
         return out
 
 
 class tdBatchNorm(nn.BatchNorm2d):
-    """tdBN的实现。相关论文链接：https://arxiv.org/pdf/2011.05280。具体是在BN时，也在时间域上作平均；并且在最后的系数中引入了alpha变量以及Vth。
-        Implementation of tdBN. Link to related paper: https://arxiv.org/pdf/2011.05280. In short it is averaged over the time domain as well when doing BN.
+    """
+    tdBN的实现。相关论文链接：https://arxiv.org/pdf/2011.05280。
+    具体是在BN时，也在时间域上作平均；并且在最后的系数中引入了alpha变量以及Vth。
+    Implementation of tdBN. Link to related paper: https://arxiv.org/pdf/2011.05280. In short it is averaged over the time domain as well when doing BN.
     Args:
         num_features (int): same with nn.BatchNorm2d
         eps (float): same with nn.BatchNorm2d
@@ -93,8 +102,7 @@ class tdBatchNorm(nn.BatchNorm2d):
         track_running_stats (bool): same with nn.BatchNorm2d
     """
     def __init__(self, num_features, eps=1e-05, momentum=0.1, alpha=1, affine=True, track_running_stats=True):
-        super(tdBatchNorm, self).__init__(
-            num_features, eps, momentum, affine, track_running_stats)
+        super(tdBatchNorm, self).__init__(num_features, eps, momentum, affine, track_running_stats)
         self.alpha = alpha
 
     def forward(self, input):

@@ -23,19 +23,13 @@ class NMNISTNet(nn.Module):  # Example net for N-MNIST
         self.spike = LIFSpike()
     
     def forward(self, x):
-        x = self.conv1_s(x)
-        x = self.spike(x)
-        x = self.pool1_s(x)
-        x = self.spike(x)
-        x = self.conv2_s(x)
-        x = self.spike(x)
-        x = self.pool2_s(x)
-        x = self.spike(x)
+        x = self.spike(self.conv1_s(x))
+        x = self.spike(self.pool1_s(x))
+        x = self.spike(self.conv2_s(x))
+        x = self.spike(self.pool2_s(x))
         x = x.view(x.shape[0], -1, x.shape[4])
-        x = self.fc1_s(x)
-        x = self.spike(x)
-        x = self.fc2_s(x)
-        x = self.spike(x)
+        x = self.spike(self.fc1_s(x))
+        x = self.spike(self.fc2_s(x))
         out = torch.sum(x, dim=2) / steps  # [N, neurons, steps]
         return out
 
@@ -61,19 +55,13 @@ class MNISTNet(nn.Module):  # Example net for MNIST
         self.spike = LIFSpike()
         
     def forward(self, x):
-        x = self.conv1_s(x)
-        x = self.spike(x)
-        x = self.pool1_s(x)
-        x = self.spike(x)
-        x = self.conv2_s(x)
-        x = self.spike(x)
-        x = self.pool2_s(x)
-        x = self.spike(x)
+        x = self.spike(self.conv1_s(x))
+        x = self.spike(self.pool1_s(x))
+        x = self.spike(self.conv2_s(x))
+        x = self.spike(self.pool2_s(x))
         x = x.view(x.shape[0], -1, x.shape[4])
-        x = self.fc1_s(x)
-        x = self.spike(x)
-        x = self.fc2_s(x)
-        x = self.spike(x)
+        x = self.spike(self.fc1_s(x))
+        x = self.spike(self.fc2_s(x))
         out = torch.sum(x, dim=2) / steps  # [N, neurons, steps]
         return out
 
@@ -85,16 +73,21 @@ class CifarNet(nn.Module):  # Example net for CIFAR10
         #self.conv0 = nn.Conv2d(1, 1, 5, 2)
         self.conv0 = nn.Conv2d(3, 128, 3, 1, 1, bias=None)
         self.bn0 = tdBatchNorm(128)
+
         self.conv1 = nn.Conv2d(128, 256, 3, 1, 1, bias=None)
         self.bn1 = tdBatchNorm(256)
         self.pool1 = nn.AvgPool2d(2)
+
         self.conv2 = nn.Conv2d(256, 512, 3, 1, 1, bias=None)
         self.bn2 = tdBatchNorm(512)
         self.pool2 = nn.AvgPool2d(2)
+
         self.conv3 = nn.Conv2d(512, 1024, 3, 1, 1, bias=None)
         self.bn3 = tdBatchNorm(1024)
+
         self.conv4 = nn.Conv2d(1024, 512, 3, 1, 1, bias=None)
         self.bn4 = tdBatchNorm(512)
+
         self.fc1 = nn.Linear(8 * 8 * 512, 1024)
         self.fc2 = nn.Linear(1024, 512)
         self.fc3 = nn.Linear(512, 10)
@@ -113,27 +106,17 @@ class CifarNet(nn.Module):  # Example net for CIFAR10
         self.spike = LIFSpike()
 
     def forward(self, x):
-        x = self.conv0_s(x)
-        x = self.spike(x)
-        x = self.conv1_s(x)
-        x = self.spike(x)
-        x = self.pool1_s(x)
-        x = self.spike(x)
-        x = self.conv2_s(x)
-        x = self.spike(x)
-        x = self.pool2_s(x)
-        x = self.spike(x)
-        x = self.conv3_s(x)
-        x = self.spike(x)
-        x = self.conv4_s(x)
-        x = self.spike(x)
+        x = self.spike(self.conv0_s(x))
+        x = self.spike(self.conv1_s(x))
+        x = self.spike(self.pool1_s(x))
+        x = self.spike(self.conv2_s(x))
+        x = self.spike(self.pool2_s(x))
+        x = self.spike(self.conv3_s(x))
+        x = self.spike(self.conv4_s(x))
         x = x.view(x.shape[0], -1, x.shape[4])
-        x = self.fc1_s(x)
-        x = self.spike(x)
-        x = self.fc2_s(x)
-        x = self.spike(x)
-        x = self.fc3_s(x)
-        x = self.spike(x)
+        x = self.spike(self.fc1_s(x))
+        x = self.spike(self.fc2_s(x))
+        x = self.spike(self.fc3_s(x))
         out = torch.sum(x, dim=2) / steps  # [N, neurons, steps]
         return out
 
@@ -155,6 +138,10 @@ def conv1x1(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 class BasicBlock(nn.Module):
+    '''
+    残差模块
+    basic residual block
+    '''
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
@@ -192,8 +179,6 @@ class BasicBlock(nn.Module):
         out = self.spike(out)
 
         return out
-
-
 
 class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=10, zero_init_residual=False,
@@ -298,20 +283,19 @@ class ResNet(nn.Module):
 def _resnet(arch, block, layers, pretrained, progress, **kwargs):
     model = ResNet(block, layers, **kwargs)
     if pretrained:
-        state_dict = load_state_dict_from_url(model_urls[arch],
-                                              progress=progress)
+        state_dict = load_state_dict_from_url(model_urls[arch], progress=progress)
         model.load_state_dict(state_dict)
     return model
 
 
 
 def resnet19(pretrained=False, progress=True, **kwargs):
-    r"""ResNet-18 model from
+    """
+    ResNet-18 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet18', BasicBlock, [3, 3, 2], pretrained, progress,
-                   **kwargs)
+    return _resnet('resnet18', BasicBlock, [3, 3, 2], pretrained, progress, **kwargs)
