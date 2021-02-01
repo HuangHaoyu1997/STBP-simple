@@ -3,13 +3,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-steps = 2   # 时间窗长度
+steps = 8   # 时间窗长度
 dt = 5
 simwin = dt * steps
 a = 0.25
 lens = 0.5  # 梯度近似项 
 Vth = 0.2   # 阈值电压 V_threshold
-tau = 0.25  # 漏电常数 tau
+tau = 0.0  # 漏电常数 tau
 
 
 class SpikeAct(torch.autograd.Function):

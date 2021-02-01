@@ -33,8 +33,6 @@ class NMNISTNet(nn.Module):  # Example net for N-MNIST
         out = torch.sum(x, dim=2) / steps  # [N, neurons, steps]
         return out
 
-
-
 class MNISTNet(nn.Module):  # Example net for MNIST
     def __init__(self):
         super(MNISTNet, self).__init__()
@@ -64,8 +62,6 @@ class MNISTNet(nn.Module):  # Example net for MNIST
         x = self.spike(self.fc2_s(x))
         out = torch.sum(x, dim=2) / steps  # [N, neurons, steps]
         return out
-
-
 
 class CifarNet(nn.Module):  # Example net for CIFAR10
     def __init__(self):
@@ -102,7 +98,6 @@ class CifarNet(nn.Module):  # Example net for CIFAR10
         self.fc1_s = tdLayer(self.fc1)
         self.fc2_s = tdLayer(self.fc2)
         self.fc3_s = tdLayer(self.fc3)
-
         self.spike = LIFSpike()
 
     def forward(self, x):
@@ -139,7 +134,6 @@ class BasicBlock(nn.Module):
     basic residual block
     '''
     expansion = 1
-
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1, base_width=64, dilation=1, norm_layer=None):
         super(BasicBlock, self).__init__()
         if norm_layer is None:
@@ -163,8 +157,7 @@ class BasicBlock(nn.Module):
     def forward(self, x):
         identity = x
 
-        out = self.conv1_s(x)
-        out = self.spike(out)
+        out = self.spike(self.conv1_s(x))
         out = self.conv2_s(out)
 
         if self.downsample is not None:
@@ -247,13 +240,11 @@ class ResNet(nn.Module):
             layers.append(block(self.inplanes, planes, groups=self.groups,
                                 base_width=self.base_width, dilation=self.dilation,
                                 norm_layer=norm_layer))
-
         return nn.Sequential(*layers)
 
     def _forward_impl(self, x):
         # See note [TorchScript super()]
-        x = self.conv1_s(x)
-        x = self.spike(x)
+        x = self.spike(self.conv1_s(x))
 
         x = self.layer1(x)
         x = self.layer2(x)
@@ -261,16 +252,13 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = x.view(x.shape[0], -1, x.shape[4])
-        x = self.fc1_s(x)
-        x = self.spike(x)
-        x = self.fc2_s(x)
-        x = self.spike(x)
+        x = self.spike(self.fc1_s(x))
+        x = self.spike(self.fc2_s(x))
         out = torch.sum(x, dim=2) / steps
         return out
 
     def forward(self, x):
         return self._forward_impl(x)
-
 
 def _resnet(arch, block, layers, pretrained, progress, **kwargs):
     model = ResNet(block, layers, **kwargs)
@@ -279,13 +267,10 @@ def _resnet(arch, block, layers, pretrained, progress, **kwargs):
         model.load_state_dict(state_dict)
     return model
 
-
-
 def resnet19(pretrained=False, progress=True, **kwargs):
     """
     ResNet-18 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
-
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
